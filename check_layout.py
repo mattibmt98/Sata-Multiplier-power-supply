@@ -43,7 +43,13 @@ def main():
     total, problems = 0, 0
     for path in sorted(glob.glob("kicad/sata_psu_*.kicad_sch")):
         text = open(path, encoding="utf-8").read()
-        body = text[text.find("  (wire"):] or text
+        # Not `text[text.find(...):]`: find() returns -1 when the marker is
+        # absent, and a [-1:] slice is one character rather than empty, so the
+        # `or text` fallback never fires and the sheet silently checks clean.
+        # That is how this check reported "0 symbols checked" and PASSED after
+        # KiCad re-saved the sheets in its own tab-indented format.
+        i = text.find("  (wire")
+        body = text[i:] if i >= 0 else text
         placed = []
         for m in re.finditer(
                 r'\(symbol\n\s+\(lib_id "([^"]+)"\)\n\s+\(at ([-\d.]+) ([-\d.]+) (\d+)\)',
@@ -65,6 +71,10 @@ def main():
             print()
             print("     %-10s %s" % (name, status))
     print("%d symbols checked, %d overlapping pairs" % (total, problems))
+    if not total:
+        print("     NO SYMBOLS PARSED -- the sheets are not in gen_sch.py's")
+        print("     format (KiCad re-saves them tab-indented). Re-run gen_sch.py.")
+        return 1
     return problems
 
 

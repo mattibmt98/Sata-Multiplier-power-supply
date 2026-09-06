@@ -608,6 +608,39 @@
     "subpart_first_id": 65,
     "subpart_id_separator": 0
   },
-  "sheets": [],
+  "sheets": [
+    [
+      "f0e190f0-6b7d-5633-94d7-0d3d9757c179",
+      "Root"
+    ],
+    [
+      "ccf6d1e6-c4ae-5b40-a4c1-2315706323bf",
+      "Input protection"
+    ],
+    [
+      "1c9840b1-00cb-5a22-8af9-fc97c99bd125",
+      "5V rail links"
+    ],
+    [
+      "eeebe5cd-0287-533e-b93c-0838a09b4808",
+      "Channel 1"
+    ],
+    [
+      "f6bf2ebb-beb4-5551-b8da-4d4446d7c32c",
+      "Channel 2"
+    ],
+    [
+      "758d2d73-ce37-5c17-913a-1091bac6315e",
+      "Channel 3"
+    ],
+    [
+      "a4d693a8-28be-575c-88e1-7fe46c60b4d8",
+      "Channel 4"
+    ],
+    [
+      "72515108-c5ec-5fa3-bdba-e18782dafaa2",
+      "Channel 5"
+    ]
+  ],
   "text_variables": {}
 }

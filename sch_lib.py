@@ -186,11 +186,17 @@ class Sheet:
         self.glabels, self.texts = [], []
 
     def place(self, lib_id, ref, value, x, y, rot=0, footprint="", fields="auto",
-              mpn="", dkpn=""):
+              mpn="", dkpn="", dnp=False):
+        """dnp=True marks the part Do Not Populate: the land and the net stay
+        on the board, the part is not fitted. Used for the build-time buck and
+        rail-link options -- see BUCKS/LINKS in gen_sch.py. Note that a DNP part
+        still conducts as far as the netlist is concerned, which is why the
+        populate rules need a check of their own (verify.py check 5)."""
         check_footprint(footprint)
         c = Comp(lib_id, ref, value, x, y, rot, footprint, self)
         c.fields = fields
         c.mpn, c.dkpn = mpn, dkpn
+        c.dnp = dnp
         self.comps.append(c)
         return c
 
@@ -400,9 +406,10 @@ def render(sheet, root_uuid, sheet_obj_uuid=None, sheets=None, page="1"):
         a(f"    (at {c.x} {c.y} {c.rot})")
         a("    (unit 1)")
         a("    (exclude_from_sim no)")
+        dnp = getattr(c, "dnp", False)
         a(f"    (in_bom {'no' if power else 'yes'})")
         a(f"    (on_board {'no' if power else 'yes'})")
-        a("    (dnp no)")
+        a(f"    (dnp {'yes' if dnp else 'no'})")
         a("    (fields_autoplaced yes)")
         a(f'    (uuid "{c.uuid}")')
         # Counter-rotate the fields so text stays horizontal whatever the

@@ -1,0 +1,356 @@
+(kicad_sch
+  (version 20250114)
+  (generator "sata_psu_gen")
+  (generator_version "9.0")
+  (uuid "4fc8e982-2d73-5ebf-b5d2-3fd4baf2d285")
+  (paper "A3")
+  (title_block
+    (title "5V rail links")
+    (date "")
+    (company "5-Bay SATA Drive PSU")
+  )
+  (lib_symbols
+      (symbol "Device:R"
+        (pin_numbers
+          (hide yes)
+        )
+        (pin_names
+          (offset 0)
+        )
+        (exclude_from_sim no)
+        (in_bom yes)
+        (on_board yes)
+        (property "Reference" "R"
+          (at 2.032 0 90)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+          )
+        )
+        (property "Value" "R"
+          (at 0 0 90)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+          )
+        )
+        (property "Footprint" ""
+          (at -1.778 0 90)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+            (hide yes)
+          )
+        )
+        (property "Datasheet" "~"
+          (at 0 0 0)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+            (hide yes)
+          )
+        )
+        (property "Description" "Resistor"
+          (at 0 0 0)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+            (hide yes)
+          )
+        )
+        (property "ki_keywords" "R res resistor"
+          (at 0 0 0)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+            (hide yes)
+          )
+        )
+        (property "ki_fp_filters" "R_*"
+          (at 0 0 0)
+          (effects
+            (font
+              (size 1.27 1.27)
+            )
+            (hide yes)
+          )
+        )
+        (symbol "R_0_1"
+          (rectangle
+            (start -1.016 -2.54)
+            (end 1.016 2.54)
+            (stroke
+              (width 0.254)
+              (type default)
+            )
+            (fill
+              (type none)
+            )
+          )
+        )
+        (symbol "R_1_1"
+          (pin passive line
+            (at 0 3.81 270)
+            (length 1.27)
+            (name "~"
+              (effects
+                (font
+                  (size 1.27 1.27)
+                )
+              )
+            )
+            (number "1"
+              (effects
+                (font
+                  (size 1.27 1.27)
+                )
+              )
+            )
+          )
+          (pin passive line
+            (at 0 -3.81 90)
+            (length 1.27)
+            (name "~"
+              (effects
+                (font
+                  (size 1.27 1.27)
+                )
+              )
+            )
+            (number "2"
+              (effects
+                (font
+                  (size 1.27 1.27)
+                )
+              )
+            )
+          )
+        )
+        (embedded_fonts no)
+      )
+  )
+  (wire
+    (pts (xy 38.1 76.2) (xy 59.69 76.2))
+    (stroke (width 0) (type default))
+    (uuid "f2a77f77-9bb1-5f76-87ff-01967b32be28")
+  )
+  (wire
+    (pts (xy 67.31 76.2) (xy 88.9 76.2))
+    (stroke (width 0) (type default))
+    (uuid "fcff8413-6f22-5e09-9220-0f33d042b9d4")
+  )
+  (wire
+    (pts (xy 88.9 76.2) (xy 110.49 76.2))
+    (stroke (width 0) (type default))
+    (uuid "ad5f112a-dfba-5b69-b84a-64133f4a1d4a")
+  )
+  (wire
+    (pts (xy 118.11 76.2) (xy 139.7 76.2))
+    (stroke (width 0) (type default))
+    (uuid "c9df1c2e-e108-59e7-bb82-4fe9d2a0e9a3")
+  )
+  (wire
+    (pts (xy 139.7 76.2) (xy 161.29 76.2))
+    (stroke (width 0) (type default))
+    (uuid "35b679cd-e10f-5bed-8c45-85aaa4d09bd6")
+  )
+  (wire
+    (pts (xy 168.91 76.2) (xy 190.49999999999997 76.2))
+    (stroke (width 0) (type default))
+    (uuid "20e05083-2e12-5677-906c-b78ab064752d")
+  )
+  (wire
+    (pts (xy 190.49999999999997 76.2) (xy 212.09 76.2))
+    (stroke (width 0) (type default))
+    (uuid "b5bbd27c-2649-525a-b74f-607d42e7c06f")
+  )
+  (wire
+    (pts (xy 219.71 76.2) (xy 241.29999999999998 76.2))
+    (stroke (width 0) (type default))
+    (uuid "e07895ed-9b5d-5fcb-9148-bea666dec41b")
+  )
+  (global_label "5V_1"
+    (shape bidirectional)
+    (at 38.1 76.2 180)
+    (fields_autoplaced yes)
+    (effects (font (size 1.27 1.27)) (justify right))
+    (uuid "edbb540f-7454-5dbc-bcbd-6eb79587cb98")
+  )
+  (global_label "5V_2"
+    (shape bidirectional)
+    (at 88.9 76.2 0)
+    (fields_autoplaced yes)
+    (effects (font (size 1.27 1.27)) (justify left))
+    (uuid "e5d1bc9c-f5d1-5ad8-ad76-7d67a981f635")
+  )
+  (global_label "5V_3"
+    (shape bidirectional)
+    (at 139.7 76.2 0)
+    (fields_autoplaced yes)
+    (effects (font (size 1.27 1.27)) (justify left))
+    (uuid "45b080da-1975-5be8-a21e-d4fcac556b11")
+  )
+  (global_label "5V_4"
+    (shape bidirectional)
+    (at 190.49999999999997 76.2 0)
+    (fields_autoplaced yes)
+    (effects (font (size 1.27 1.27)) (justify left))
+    (uuid "b90d3c24-6a50-504a-acea-b260a234f432")
+  )
+  (global_label "5V_5"
+    (shape bidirectional)
+    (at 241.29999999999998 76.2 0)
+    (fields_autoplaced yes)
+    (effects (font (size 1.27 1.27)) (justify left))
+    (uuid "edd1731c-5969-5e5d-86a6-dcb8bf54c0e4")
+  )
+  (text "5V rail links - how each port gets its 5V"
+    (exclude_from_sim no)
+    (at 38.1 30.48 0)
+    (effects (font (size 2.54 2.54)) (justify left bottom))
+    (uuid "1176fc7f-177e-557b-b990-c9130a3b6d14")
+  )
+  (text "group 1: U2 feeds ports 1, 2, 3"
+    (exclude_from_sim no)
+    (at 38.1 35.56 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "49b97dfb-851d-554d-8a97-d309a51a4c32")
+  )
+  (text "group 2: U4 feeds ports 4, 5"
+    (exclude_from_sim no)
+    (at 38.1 39.370000000000005 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "02d09383-ed78-55de-84ca-c893b30aecef")
+  )
+  (text "A link is 0R when fitted and simply absent when not. Fitting a link between two populated bucks"
+    (exclude_from_sim no)
+    (at 38.1 55.88 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "b0fb65ab-9fbb-5515-84be-b9f7ab75d224")
+  )
+  (text "parallels them, and verify.py check 5 refuses that configuration."
+    (exclude_from_sim no)
+    (at 38.1 59.69 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "716ad098-50c6-57ce-b11a-b9e9b37ae647")
+  )
+  (text "R61 fitted"
+    (exclude_from_sim no)
+    (at 54.61 68.58 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "7d20aab0-8645-5a34-86a9-6d9d4ccb5880")
+  )
+  (text "R62 fitted"
+    (exclude_from_sim no)
+    (at 105.41 68.58 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "2e950607-9c33-5011-b138-153f233169d9")
+  )
+  (text "R63 OPEN"
+    (exclude_from_sim no)
+    (at 156.20999999999998 68.58 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "d7df835f-f0f4-5ee4-bc70-539118af015f")
+  )
+  (text "R64 fitted"
+    (exclude_from_sim no)
+    (at 207.01 68.58 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "27b26b63-8b2a-5753-9dff-89b7482f2c65")
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 63.5 76.2 90)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (fields_autoplaced yes)
+    (uuid "e95b4882-bfec-57bf-8855-66fcf7f0d03c")
+    (property "Reference" "R61" (at 63.5 72.64399999999999 90) (effects (font (size 1.27 1.27))))
+    (property "Value" "0R" (at 63.5 79.75600000000001 90) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_1206_3216Metric" (at 63.5 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (property "Datasheet" "~" (at 63.5 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (instances
+      (project "sata_psu"
+        (path "/f0e190f0-6b7d-5633-94d7-0d3d9757c179/1c9840b1-00cb-5a22-8af9-fc97c99bd125"
+          (reference "R61") (unit 1)
+        )
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 114.3 76.2 90)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (fields_autoplaced yes)
+    (uuid "8cae37f6-a1f6-562a-9408-58162c821a34")
+    (property "Reference" "R62" (at 114.3 72.64399999999999 90) (effects (font (size 1.27 1.27))))
+    (property "Value" "0R" (at 114.3 79.75600000000001 90) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_1206_3216Metric" (at 114.3 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (property "Datasheet" "~" (at 114.3 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (instances
+      (project "sata_psu"
+        (path "/f0e190f0-6b7d-5633-94d7-0d3d9757c179/1c9840b1-00cb-5a22-8af9-fc97c99bd125"
+          (reference "R62") (unit 1)
+        )
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 165.09999999999997 76.2 90)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp yes)
+    (fields_autoplaced yes)
+    (uuid "0a993779-a685-5984-9dff-eb83e72d0de0")
+    (property "Reference" "R63" (at 165.09999999999997 72.64399999999999 90) (effects (font (size 1.27 1.27))))
+    (property "Value" "0R" (at 165.09999999999997 79.75600000000001 90) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_1206_3216Metric" (at 165.09999999999997 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (property "Datasheet" "~" (at 165.09999999999997 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (instances
+      (project "sata_psu"
+        (path "/f0e190f0-6b7d-5633-94d7-0d3d9757c179/1c9840b1-00cb-5a22-8af9-fc97c99bd125"
+          (reference "R63") (unit 1)
+        )
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 215.89999999999998 76.2 90)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (fields_autoplaced yes)
+    (uuid "2466723d-a2f8-5274-b733-9b557a1e722e")
+    (property "Reference" "R64" (at 215.89999999999998 72.64399999999999 90) (effects (font (size 1.27 1.27))))
+    (property "Value" "0R" (at 215.89999999999998 79.75600000000001 90) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_1206_3216Metric" (at 215.89999999999998 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (property "Datasheet" "~" (at 215.89999999999998 76.2 0) (effects (font (size 1.27 1.27)) (hide yes)))
+    (instances
+      (project "sata_psu"
+        (path "/f0e190f0-6b7d-5633-94d7-0d3d9757c179/1c9840b1-00cb-5a22-8af9-fc97c99bd125"
+          (reference "R64") (unit 1)
+        )
+      )
+    )
+  )
+  (embedded_fonts no)
+)

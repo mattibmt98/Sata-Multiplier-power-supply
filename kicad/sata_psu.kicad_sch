@@ -17,11 +17,17 @@
     (effects (font (size 3.5 3.5)) (justify left bottom))
     (uuid "37e5186e-8b3c-50f6-9385-1449b260c2cf")
   )
-  (text "Single 12V brick, onboard 5V buck, five analog-staggered channels"
+  (text "Single 12V brick, five analog-staggered channels, per-port 5V buck"
     (exclude_from_sim no)
     (at 38.1 31.75 0)
     (effects (font (size 2.0 2.0)) (justify left bottom))
-    (uuid "8aa61d04-29b8-537f-8447-06171fed87e7")
+    (uuid "d00e0654-521a-553d-bb9b-a4e2eaf7d297")
+  )
+  (text "5V rails: U2 -> ports 1,2,3 | U4 -> ports 4,5"
+    (exclude_from_sim no)
+    (at 38.1 36.83 0)
+    (effects (font (size 1.8 1.8)) (justify left bottom))
+    (uuid "f482dc53-4ecf-5703-8fc0-0c26f208de0b")
   )
   (sheet
     (at 25.4 44.45)
@@ -44,9 +50,9 @@
     (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no)
     (stroke (width 0.1524) (type solid))
     (fill (color 0 0 0 0.0000))
-    (uuid "2e590e70-f033-56f2-b889-c8e97d256062")
-    (property "Sheetname" "5V buck regulator" (at 25.4 88.2 0) (effects (font (size 1.524 1.524)) (justify left bottom)))
-    (property "Sheetfile" "sata_psu_buck.kicad_sch" (at 25.4 115.70000000000002 0) (effects (font (size 1.524 1.524)) (justify left top)))
+    (uuid "1c9840b1-00cb-5a22-8af9-fc97c99bd125")
+    (property "Sheetname" "5V rail links" (at 25.4 88.2 0) (effects (font (size 1.524 1.524)) (justify left bottom)))
+    (property "Sheetfile" "sata_psu_rails.kicad_sch" (at 25.4 115.70000000000002 0) (effects (font (size 1.524 1.524)) (justify left top)))
     (instances
       (project "sata_psu"
         (path "/f0e190f0-6b7d-5633-94d7-0d3d9757c179" (page "3"))
