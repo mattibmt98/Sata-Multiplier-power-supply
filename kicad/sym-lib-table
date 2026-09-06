@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "sata_psu")(type "KiCad")(uri "${KIPRJMOD}/../libs/sata_psu.kicad_sym")(options "")(descr "Project symbols for the 5-bay SATA PSU"))
+)
