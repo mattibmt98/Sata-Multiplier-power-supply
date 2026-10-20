@@ -1,0 +1,20 @@
+(version 1)
+# JLCPCB standard 2-layer process (1 oz, 1.6 mm FR4, HASL), no-surcharge options.
+# Basic limits live in Board Setup > Constraints; these cover what it cannot express.
+# Source: https://jlcpcb.com/capabilities/pcb-capabilities
+
+(rule "JLC: PTH pad annular ring"
+	(constraint annular_width (min 0.18))
+	(condition "A.Type == 'Pad' && A.Pad_Type == 'Through-hole'"))
+
+(rule "JLC: pad hole to pad hole"
+	(constraint hole_to_hole (min 0.45))
+	(condition "A.Type == 'Pad' && B.Type == 'Pad'"))
+
+(rule "JLC: NPTH min drill"
+	(constraint hole_size (min 0.5))
+	(condition "A.Pad_Type == 'NPTH, mechanical'"))
+
+(rule "JLC: SMD pad to pad (different nets)"
+	(constraint clearance (min 0.15))
+	(condition "A.Type == 'Pad' && B.Type == 'Pad' && A.Net != B.Net"))
