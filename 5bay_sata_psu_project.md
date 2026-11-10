@@ -28,6 +28,13 @@ to design around.
 - **5V rail: 5A**, generated locally from the 12V input via a buck converter (not pulled from the
   brick directly, since we're using a single 12V brick as the input source).
 
+> **Implemented as two inputs.** A single barrel jack is an 8A contact, which a
+> fully populated cage can exceed, so the built board splits the 12V load across
+> two jacks and two bricks: `J8` -> `12V_A` -> bays 1-3 (~4.4A worst case) and
+> `J9` -> `12V_B` -> bays 4-5 (~3.4A worst case). The two rails are never joined
+> (paralleled bricks do not share current); only ground is common. Everything
+> below describing "the brick" and `12V_MAIN` applies to each input separately.
+
 ## 3. Block diagram
 
 ```
@@ -136,10 +143,10 @@ multiplier had separate, uncoordinated power domains.
 
 | Qty | Part | Notes |
 |-----|------|-------|
-| 1 | 12V DC barrel-jack adapter, 8-10A | Input source |
-| 1 | Panel-mount barrel jack + 10A fuse holder + 10A fast-blow fuse | Input protection |
-| 1 | P-channel MOSFET (reverse-polarity protection, high-current) | Input reverse-polarity guard |
-| 2 | 1000µF 25V low-ESR electrolytic | Input bulk capacitance |
+| 2 | 12V DC barrel-jack adapter, 5-6A each | Input sources: one for bays 1-3, one for bays 4-5 (see note below) |
+| 2 | Barrel jack + fuse holder + 8A fast-blow fuse | Input protection, one per input |
+| 2 | P-channel MOSFET (reverse-polarity protection, high-current) | Input reverse-polarity guard, one per input |
+| 2 | 1000µF 25V low-ESR electrolytic | Input bulk capacitance, one per input |
 | 1 | 10µF ceramic | Input HF decoupling |
 | 1 | 12V→5V buck converter module, 5A+ (e.g. TPS563201-based) | 5V rail, always-on |
 | 5 | P-channel MOSFET, ≥4A, low RDS(on) (e.g. AO4407A or similar) | Per-channel 12V switch |

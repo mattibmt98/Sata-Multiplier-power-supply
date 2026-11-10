@@ -6,7 +6,7 @@ throughout, so the sheets read the way a person would draw them:
   * supply rail runs horizontally across the top, ground symbols point down
   * power flows left to right, top to bottom
   * shunt parts (decoupling, dividers) hang below their rail
-  * inter-sheet connections are global labels: 12V_MAIN, 5V_MAIN
+  * inter-sheet connections are global labels: 12V_A, 12V_B, 5V_1..5V_5
 
 sch_lib resolves real pin geometry from the KiCad libraries and refuses any
 off-grid placement, diagonal wire, or non-existent footprint, so wires provably
@@ -133,6 +133,41 @@ CHANNELS = [
 BUCKS = (False, True,  False, True,  False)
 LINKS = (True,  True,  False, True)        # R61..R64, between port n and n+1
 
+# ------------------------------------------------------- 12V input domains
+#
+# Two barrel jacks, two bricks, two SEPARATE 12V rails. A fully populated cage
+# pulls more than one PJ-063AH should carry (it is an 8A contact, and the old
+# single input was fused at 10A), so the load is split instead of the bricks
+# being paralleled:
+#
+#     J8 -> F8 -> Q8 -> 12V_A -> ports 1, 2, 3
+#     J9 -> F9 -> Q9 -> 12V_B -> ports 4, 5
+#
+# The rails are never joined. Two bricks in parallel do not share current --
+# the one with the higher setpoint takes the load -- and a brick left
+# unplugged would be back-fed through the other one's guard FET. Split, each
+# brick sees only its own bays and either half runs on its own. Ground is
+# common.
+#
+# Worst case per domain (doc section 2 figures, staggered spin-up):
+#   A: 2A spin-up + 2 x 0.7A + buck U2 input (~1A)   = ~4.4A
+#   B: 2A spin-up + 1 x 0.7A + buck U4 input (~0.7A) = ~3.4A
+# so a 5-6A brick per jack is enough and each jack runs at about half rating.
+#
+# The split follows the default 5V grouping on purpose (U2 -> 1-3, U4 -> 4-5):
+# a 5V group that straddled the two domains would keep feeding 5V to a drive
+# whose 12V brick is unplugged. check_rails() rule 4 enforces that.
+#
+# port:      1    2    3    4    5
+DOMAINS = ("A", "A", "A", "B", "B")
+INPUT_BLOCK = {"A": 8, "B": 9}      # ref block: J8/F8/Q8/C8x and J9/F9/Q9/C9x
+
+
+def rail12(n):
+    """Name of the 12V net that feeds port n."""
+    return "12V_%s" % DOMAINS[n - 1]
+
+
 MAX_GROUP = 3       # ports one buck may feed: 3 x ~0.7A = 2.1A on a 3A part
 MAX_LINK_PORTS = 1  # ports one 0R link may carry: 1 x ~0.7A on a 2A jumper
 
@@ -153,16 +188,22 @@ def rail_groups(links=LINKS):
 def check_rails(bucks=BUCKS, links=LINKS):
     """Return the list of reasons this populate configuration is illegal.
 
-    Three rules, all of which a netlist and an ERC run are blind to:
+    Four rules, all of which a netlist and an ERC run are blind to:
       1. every group of link-joined ports needs exactly one populated buck --
          zero means dead ports, two or more means paralleled regulators;
       2. no group may exceed MAX_GROUP ports, or the buck is over its rating;
       3. no single 0R link may carry more than MAX_LINK_PORTS ports' current,
          which in practice means the buck sits in the MIDDLE of its group,
-         not at the edge.
+         not at the edge;
+      4. no group may straddle the two 12V input domains, or a port would get
+         5V from a buck on the other brick while its own 12V is unplugged.
     """
     errs = []
     for g in rail_groups(links):
+        doms = sorted({DOMAINS[n - 1] for n in g})
+        if len(doms) > 1:
+            errs.append("ports %s: 5V group spans 12V domains %s -- open the "
+                        "link at the domain boundary" % (g, "+".join(doms)))
         fitted = [n for n in g if bucks[n - 1]]
         if len(fitted) != 1:
             errs.append("ports %s: %d populated bucks, need exactly 1"
@@ -198,6 +239,7 @@ def channel_sheet(n, c_gate, delay, c_fp, c_pn):
 
     RAIL, GATE, OUT_Y = 38.1, 53.34, 95.25
     V5 = "5V_%d" % n
+    V12 = rail12(n)
 
     sh.text("Channel %d - staggered high-side switch + local 5V" % n, 38.1, 25.4, 2.54)
     sh.text("C%d1=%s with R%d1=220k sets turn-on at %s" % (n, c_gate, n, delay),
@@ -206,7 +248,7 @@ def channel_sheet(n, c_gate, delay, c_fp, c_pn):
             38.1, 34.29, 1.8)
 
     # --- 12V rail across the top
-    sh.glabel("12V_MAIN", 38.1, RAIL, 180, "input")
+    sh.glabel(V12, 38.1, RAIL, 180, "input")
     sh.wire((38.1, RAIL), (110.49, RAIL))
 
     # --- high-side P-channel switch: source on the always-on rail
@@ -315,7 +357,7 @@ def buck_block(sh, n, dx, dy, fitted):
                  114.3 + dx, 76.2 + dy, footprint=FP_SOT23_6, fields="above",
                  mpn=MPN_BUCK, dkpn=DK_BUCK, dnp=dnp)
 
-    sh.glabel("12V_MAIN", 38.1 + dx, RAIL, 180, "input")
+    sh.glabel(rail12(n), 38.1 + dx, RAIL, 180, "input")
     sh.wire((38.1 + dx, RAIL), (104.14 + dx, RAIL), u.pin("VIN"))
 
     for x, ref, val, fp, pn in ((46.99, "C%d4" % n, "10uF/50V", FP_C1206, C_10U),
@@ -429,71 +471,95 @@ def rails_sheet():
 
 
 # ------------------------------------------------------------------ input
-def input_sheet():
-    sh = S.Sheet("input", "Input protection", PROJECT, index=1)
-    sh.filename = "%s_input.kicad_sch" % PROJECT
-    RAIL = 60.96
+def input_stage(sh, dom, dy):
+    """One jack -> fuse -> reverse-polarity guard -> bulk, drawn at offset dy.
 
-    sh.text("Input protection - 12V brick, fuse, reverse-polarity guard, bulk C",
-            38.1, 34.29, 2.54)
+    Drawn twice, once per 12V domain, from this one function -- so the two
+    inputs are identical by construction, the same way the channel cells are.
+    """
+    blk = INPUT_BLOCK[dom]
+    net = "12V_%s" % dom
+    ports = [n for n in range(1, 6) if DOMAINS[n - 1] == dom]
+    RAIL = 60.96 + dy
 
-    j = sh.place("Connector:Barrel_Jack", "J8", "12V DC 8-10A", 55.88, 63.5,
-                 footprint=FP_JACK, mpn=MPN_JACK, dkpn=DK_JACK)
-    # Two FC-203-22 clips hold one 5x20mm 10A cartridge fuse (fuse ordered separately).
-    f = sh.place("Device:Fuse", "F8", "10A fast-blow", 76.2, RAIL, 90,
+    sh.text("Input %s - J%d feeds %s, port%s %s"
+            % (dom, blk, net, "" if len(ports) == 1 else "s",
+               ", ".join(str(n) for n in ports)), 38.1, 44.45 + dy, 2.0)
+
+    j = sh.place("Connector:Barrel_Jack", "J%d" % blk, "12V DC 5-8A",
+                 55.88, 63.5 + dy, footprint=FP_JACK, mpn=MPN_JACK, dkpn=DK_JACK)
+    # Two FC-203-22 clips hold one 5x20mm cartridge fuse (ordered separately).
+    f = sh.place("Device:Fuse", "F%d" % blk, "8A fast-blow", 76.2, RAIL, 90,
                  footprint=FP_FUSEHOLDER, mpn=MPN_CLIP, dkpn=DK_CLIP)
     sh.wire(j.pin("1"), f.pin("1"))
-    sh.wire(j.pin("2"), (63.5, 74.93))
-    sh.gnd(63.5, 74.93)
+    sh.wire(j.pin("2"), (63.5, 74.93 + dy))
+    sh.gnd(63.5, 74.93 + dy)
 
     # Reverse-polarity guard: body diode faces the load, gate to GND, so the
-    # FET only enhances when the input polarity is correct.
-    # Q8 carries the whole board (~5.1A steady incl. the buck), so it needs a
-    # bigger package than the SOT-23 used per channel: 1.6W vs 0.39W.
-    q = sh.place("sata_psu:AOD4185", "Q8", "AOD4185", 95.25, 63.5, 90,
+    # FET only enhances when the input polarity is correct. It carries its
+    # whole domain (up to ~4.4A incl. the buck), so it stays in TO-252 rather
+    # than the SOT-23 used per channel.
+    q = sh.place("sata_psu:AOD4185", "Q%d" % blk, "AOD4185", 95.25, 63.5 + dy, 90,
                  footprint=FP_TO252, fields="above", mpn=MPN_PMOS8, dkpn=DK_PMOS8)
     sh.wire(f.pin("2"), q.pin("D"))
-    sh.wire(q.pin("G"), (95.25, 74.93))
-    sh.gnd(95.25, 74.93)
+    sh.wire(q.pin("G"), (95.25, 74.93 + dy))
+    sh.gnd(95.25, 74.93 + dy)
 
     sh.wire(q.pin("S"), (200.66, RAIL))
-    sh.glabel("12V_MAIN", 200.66, RAIL, 0, "output")
+    sh.glabel(net, 200.66, RAIL, 0, "output")
 
-    sh.wire((110.49, RAIL), (110.49, 53.34))
-    sh.flag(110.49, 53.34)
+    sh.wire((110.49, RAIL), (110.49, 53.34 + dy))
+    sh.flag(110.49, 53.34 + dy)
     sh.junction((110.49, RAIL))
 
+    # One 1000uF per domain. The single-input board had 2 x 1000uF for five
+    # bays; each domain now carries two or three, plus 220uF at every header.
     for x, ref, val, lib, fp, pn in (
-            (121.92, "C81", "1000uF/25V", "Device:C_Polarized", FP_CP_D10, CP_1000U),
-            (146.05, "C82", "1000uF/25V", "Device:C_Polarized", FP_CP_D10, CP_1000U),
-            (170.18, "C83", "10uF/50V", "Device:C", FP_C1206, C_10U)):
-        c = sh.place(lib, ref, val, x, 69.85, footprint=fp, mpn=pn[0], dkpn=pn[1])
+            (121.92, "C%d1" % blk, "1000uF/25V", "Device:C_Polarized", FP_CP_D10, CP_1000U),
+            (146.05, "C%d3" % blk, "10uF/50V", "Device:C", FP_C1206, C_10U)):
+        c = sh.place(lib, ref, val, x, 69.85 + dy, footprint=fp, mpn=pn[0], dkpn=pn[1])
         sh.wire((x, RAIL), c.pin("1"))
-        sh.wire(c.pin("2"), (x, 78.74))
-        sh.gnd(x, 78.74)
+        sh.wire(c.pin("2"), (x, 78.74 + dy))
+        sh.gnd(x, 78.74 + dy)
         sh.junction((x, RAIL))
 
-    # 12V present indicator. Deliberately tapped AFTER Q8, not at the jack:
-    # it then also proves the reverse-polarity guard is conducting, and "jack
-    # lit but nothing works" is a different fault from "nothing lit at all".
-    # Note this shows the COMMON rail, so it lights before any channel switches
-    # on -- it says nothing about the stagger.
-    sh.junction((185.42, RAIL))
-    led = sh.place("Device:LED", "D81", "GRN", 185.42, 69.85, 90,
+    # 12V present indicator, one per domain. Deliberately tapped AFTER the
+    # guard FET, not at the jack: it then also proves the guard is conducting,
+    # and with two inputs it says WHICH brick is missing. It shows the common
+    # rail of its domain, so it lights before any channel switches on -- it
+    # says nothing about the stagger.
+    sh.junction((170.18, RAIL))
+    led = sh.place("Device:LED", "D%d1" % blk, "GRN", 170.18, 69.85 + dy, 90,
                    footprint=FP_LED0603, mpn=MPN_LED[0], dkpn=MPN_LED[1])
-    sh.wire((185.42, RAIL), led.pin("A"))
-    r_led = sh.place("Device:R", "R81", "4.7k", 185.42, 82.55, footprint=FP_R0603,
-                     mpn=MPN_R["4.7k"][0], dkpn=MPN_R["4.7k"][1])
+    sh.wire((170.18, RAIL), led.pin("A"))
+    r_led = sh.place("Device:R", "R%d1" % blk, "4.7k", 170.18, 82.55 + dy,
+                     footprint=FP_R0603, mpn=MPN_R["4.7k"][0], dkpn=MPN_R["4.7k"][1])
     sh.wire(led.pin("K"), r_led.pin("1"))
-    sh.wire(r_led.pin("2"), (185.42, 91.44))
-    sh.gnd(185.42, 91.44)
-    sh.text("(12 - 2.0) / 4.7k = 2.1mA", 190.5, 85.09, 1.8)
+    sh.wire(r_led.pin("2"), (170.18, 91.44 + dy))
+    sh.gnd(170.18, 91.44 + dy)
+    sh.text("(12 - 2.0) / 4.7k = 2.1mA", 175.26, 85.09 + dy, 1.8)
 
-    # Star ground reference for the whole board (doc section 7).
-    sh.flag(78.74, 86.36)
-    sh.wire((78.74, 86.36), (78.74, 91.44))
-    sh.gnd(78.74, 91.44)
-    sh.text("Star ground: single point back to the brick negative", 66.04, 99.06, 1.8)
+
+def input_sheet():
+    sh = S.Sheet("input", "Input protection", PROJECT, paper="A3", index=1)
+    sh.filename = "%s_input.kicad_sch" % PROJECT
+
+    sh.text("Input protection - two 12V bricks, one per domain: fuse, "
+            "reverse-polarity guard, bulk C", 38.1, 30.48, 2.54)
+    sh.text("12V_A and 12V_B are never joined: bricks in parallel do not share, "
+            "and an unplugged one would be back-fed. GND is common.",
+            38.1, 35.56, 1.8)
+
+    input_stage(sh, "A", 0.0)
+    input_stage(sh, "B", 76.2)
+
+    # Star ground reference for the whole board (doc section 7). Both jack
+    # negatives land on it.
+    sh.flag(248.92, 86.36)
+    sh.wire((248.92, 86.36), (248.92, 91.44))
+    sh.gnd(248.92, 91.44)
+    sh.text("Star ground: single point back to both brick negatives",
+            236.22, 99.06, 1.8)
     return sh
 
 
@@ -513,8 +579,8 @@ def main():
     root = S.Sheet("root", "5-Bay SATA Drive Power Supply", PROJECT)
     root.filename = "%s.kicad_sch" % PROJECT
     root.text("5-Bay SATA Drive Power Supply", 38.1, 25.4, 3.5)
-    root.text("Single 12V brick, five analog-staggered channels, per-port 5V buck",
-              38.1, 31.75, 2.0)
+    root.text("Two 12V bricks (J8 -> ports 1-3, J9 -> ports 4-5), five "
+              "analog-staggered channels, per-port 5V buck", 38.1, 31.75, 2.0)
     root.text("5V rails: " + " | ".join(
         "U%s -> port%s %s" % ([n for n in g if BUCKS[n - 1]][0] if any(
             BUCKS[n - 1] for n in g) else "?", "" if len(g) == 1 else "s",

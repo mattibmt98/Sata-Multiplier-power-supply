@@ -4,15 +4,15 @@ A 5-channel 12V/5V power board for a SATA port-multiplier drive cage, with
 **passive analog staggered spin-up** so five drives never draw their inrush at
 the same moment.
 
-Single 12V DC brick in, five 12V+5V outputs out. No MCU, no hot-swap: the board
-powers up and down as a unit.
+**Two 12V DC bricks in** (one barrel jack for bays 1–3, one for bays 4–5), five
+12V+5V outputs out. No MCU, no hot-swap: each half powers up and down as a unit.
 
 | | |
 |---|---|
-| Status | Schematic complete and verified · PCB placed · **not routed** |
-| Board | 64.9 × 76.0 mm, single-sided placement, 112 parts |
-| ERC / DRC | 0 error-severity violations (213 unconnected pads = the unrouted nets) |
-| BOM | 36 lines; 3 still need a DigiKey number |
+| Status | Schematic complete and verified · PCB routed, JLCPCB 2-layer rules |
+| Board | 64.9 × 78.8 mm, single-sided placement, 118 parts |
+| ERC / DRC | 0 errors, 0 unconnected, 0 schematic-parity issues (93 `connection_width` warnings, 86 of them inherited from v3) |
+| BOM | `kicad/digikey_bom.csv`, fully sourced |
 | Tool | KiCad 9 — open `kicad/sata_psu.kicad_pro` |
 
 Tag [`v1.0`](../../releases/tag/v1.0) is the earlier single-buck board: 56 parts,
@@ -20,9 +20,10 @@ Tag [`v1.0`](../../releases/tag/v1.0) is the earlier single-buck board: 56 parts
 
 ## What it does
 
-- **Input:** barrel jack → 10A cartridge fuse → PMOS reverse-polarity guard →
-  2 × 1000µF bulk, sized for an 8–10A brick, with a 12V indicator LED tapped
-  *after* the guard so it also proves the guard is conducting.
+- **Input, ×2:** barrel jack → 8A cartridge fuse → PMOS reverse-polarity guard →
+  1000µF bulk, with a 12V indicator LED tapped *after* the guard so it also
+  proves the guard is conducting. `J8` feeds `12V_A` (bays 1–3), `J9` feeds
+  `12V_B` (bays 4–5). See "Two inputs" below.
 - **Per channel (×5):** high-side P-channel MOSFET on the 12V feed, gate driven
   by an RC network so each channel turns on ~1.5–2s after the previous one and
   ramps softly instead of slamming in; 8.2V zener gate clamp; PPTC polyfuse;
@@ -30,6 +31,26 @@ Tag [`v1.0`](../../releases/tag/v1.0) is the earlier single-buck board: 56 parts
   pigtail; a 5V indicator LED at the connector.
 - **No 3.3V pin anywhere**, by construction — this sidesteps the SATA PWDIS
   failure mode entirely.
+
+## Two inputs, two separate 12V rails
+
+A fully populated cage pulls more than one PJ-063AH should carry — the jack is
+an 8A contact and the single-input board fused it at 10A. So the load is
+**split**, not paralleled:
+
+```
+J8 -> F8 -> Q8 -> 12V_A -> bays 1, 2, 3     worst case ~4.4A
+J9 -> F9 -> Q9 -> 12V_B -> bays 4, 5        worst case ~3.4A
+```
+
+- The two rails are **never joined**; only ground is common. Two bricks in
+  parallel do not share current, and an unplugged one would be back-fed.
+- A 5–6A brick per jack is enough. Each half runs on its own: with only `J8`
+  plugged, bays 1–3 work and 4–5 are simply off.
+- With one to three drives, use bays 1–3 and a single brick on `J8`.
+- The split follows the default 5V grouping (U2 → 1–3, U4 → 4–5). A 5V group
+  that straddled the two inputs would feed 5V to a drive whose 12V is
+  unplugged, so `verify.py` check 5 now refuses it (`DOMAINS` in `gen_sch.py`).
 
 ## The 5V rail is configurable, not fixed
 
@@ -66,15 +87,17 @@ against a five-bay 5V rail. Capping a buck at three ports makes its worst case
 ## The schematic is generated, not drawn
 
 Every coordinate, value and part number lives in Python. Do not hand-edit
-anything under `kicad/` — it is overwritten.
+the `.kicad_sch` sheets under `kicad/` — they are overwritten.
 
 ```bash
 py sata_psu.py     # independent SKiDL reference netlist
 py gen_sch.py      # build symbols + draw all 7 sheets
 py verify.py       # the five checks below
-py gen_pcb.py      # place all 112 parts
-py check_pcb.py    # courtyard / pad / net / containment checks
 ```
+
+**Do not run `gen_pcb.py` any more.** It produces an *unrouted* placement and
+predates the routed board; `kicad/sata_psu.kicad_pcb` is now edited in KiCad
+(or with pcbnew scripts) and is the source of truth for the layout.
 
 `verify.py` cross-checks the drawn schematic against a *separately written*
 SKiDL description of the same circuit, so a wire that only looks like it lands
@@ -94,16 +117,13 @@ are in [HANDOFF.md](HANDOFF.md).
 
 ## Known open issues
 
-1. **Three part types have no DigiKey number yet** — the green LED, the 1.5k and
-   4.7k resistors, and the 0Ω link. Every other number here was copied from a
-   real listing rather than extrapolated from a part-number pattern, so these
-   are blank rather than guessed.
-2. Ceramic DC-bias derating will shorten the stagger versus the design table —
+1. Ceramic DC-bias derating will shorten the stagger versus the design table —
    the timing caps want bench tuning, or C0G/film for repeatability.
-3. Linear-region SOA during the RC ramp is unverified against the real inrush.
-4. **Routing, copper pours and the single-point star ground are not done**, and
-   v2 makes this harder than v1: five switching regulators, each with its own
-   input loop, next to five drive connectors.
+2. Linear-region SOA during the RC ramp is unverified against the real inrush.
+3. The two inputs are staggered independently: bay 1 (domain A) and bay 4
+   (domain B) each start their own RC ramp when their own brick is plugged in.
+4. The 8A fuse cartridge's DigiKey number (`F2396-ND`) came from a web search
+   of the listing, not from the cart — confirm it when ordering.
 
 ## Note on `libs/digikey/`
 

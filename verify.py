@@ -28,9 +28,12 @@ DRAWN_NET = "kicad/from_geometry.net"
 REF_NET = "kicad/reference.net"
 
 # gen_sch.py uses conventional refs; sata_psu.py predates them.
-REF_MAP = {"J0": "J8", "F0": "F8", "Q0": "Q8",
-           "C_BULK1": "C81", "C_BULK2": "C82", "C_IN_HF": "C83",
-           "D_LED12": "D81", "R_LED12": "R81"}
+REF_MAP = {}
+for _d, _b in (("A", 8), ("B", 9)):          # the two 12V input domains
+    REF_MAP.update({"J0" + _d: "J%d" % _b, "F0" + _d: "F%d" % _b,
+                    "Q0" + _d: "Q%d" % _b, "C_BULK" + _d: "C%d1" % _b,
+                    "C_IN_HF" + _d: "C%d3" % _b, "D_LED12" + _d: "D%d1" % _b,
+                    "R_LED12" + _d: "R%d1" % _b})
 for _n in range(1, 6):
     # switch half
     REF_MAP["C%d" % _n] = "C%d1" % _n
@@ -95,7 +98,7 @@ def nets(path, remap):
 # G/D/S symbol. Same electrical node, different pin names. Note the two MOSFET
 # packages number their pins differently -- on TO-252 the tab (pin 2) is drain.
 SOT23_PMOS = {"1": "G", "2": "S", "3": "D"}   # AO3401A, Q1-Q5
-TO252_PMOS = {"1": "G", "2": "D", "3": "S"}   # AOD4185, Q8
+TO252_PMOS = {"1": "G", "2": "D", "3": "S"}   # AOD4185, Q8 and Q9
 
 
 def canon(net):
@@ -107,7 +110,7 @@ def canon(net):
             # Regulator pins are named identically in both descriptions.
             out.add((r, p))
         elif r.startswith("Q"):
-            m = TO252_PMOS if r == "Q8" else SOT23_PMOS
+            m = TO252_PMOS if r in ("Q8", "Q9") else SOT23_PMOS
             out.add((r, m.get(p, p)))
         elif r.startswith("C"):
             out.add((r, "x"))

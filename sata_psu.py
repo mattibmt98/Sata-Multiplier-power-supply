@@ -50,7 +50,12 @@ JACK   = Part("Connector", "Barrel_Jack",        dest=TEMPLATE)
 # Mark the rails as power sources so ERC does not flag the POWER-IN pins
 # on U1 as undriven.
 gnd      = Net("GND");      gnd.drive      = POWER
-v12_main = Net("12V_MAIN"); v12_main.drive = POWER
+# Two 12V domains, one per barrel jack; never joined (see gen_sch.DOMAINS).
+v12 = {}
+for _d in ("A", "B"):
+    v12[_d] = Net("12V_%s" % _d)
+    v12[_d].drive = POWER
+DOMAIN = {1: "A", 2: "A", 3: "A", 4: "B", 5: "B"}
 # One local 5V node per port; they are joined only through the 0R links, so
 # they stay five distinct nets in the netlist however the board is populated.
 v5 = {}
@@ -61,36 +66,35 @@ for _n in range(1, 6):
 
 # ================================================================ input stage
 @subcircuit
-def input_protection(v_in_raw, v12, gnd):
-    """Barrel jack -> 10A fuse -> reverse-polarity PMOS -> bulk caps."""
-    j = JACK(ref="J0", value="12V_DC_8-10A")
+def input_protection(v_in_raw, v12, gnd, d):
+    """Barrel jack -> fuse -> reverse-polarity PMOS -> bulk caps, domain d."""
+    j = JACK(ref=f"J0{d}", value="12V_DC_5-8A")
     j[1] += v_in_raw          # centre pin, +12V
     j[2] += gnd
 
-    f = FUSE(ref="F0", value="10A_fast")
-    v_fused = Net("12V_FUSED")
+    f = FUSE(ref=f"F0{d}", value="8A_fast")
+    v_fused = Net(f"12V_FUSED_{d}")
     f[1, 2] += v_in_raw, v_fused
 
     # Reverse-polarity guard: PMOS in the high side, body diode facing the load.
     # Source to the load side, drain to the source rail, gate to GND -- so the
     # FET only enhances when the input polarity is correct.
-    q = PMOS(ref="Q0", value="PMOS_reverse_polarity")
+    q = PMOS(ref=f"Q0{d}", value="PMOS_reverse_polarity")
     q["S"] += v12
     q["D"] += v_fused
     q["G"] += gnd
 
-    # Bulk input capacitance (doc section 3: 2x1000uF + 10uF ceramic)
-    for i in (1, 2):
-        cb = CP(ref=f"C_BULK{i}", value="1000uF/25V")
-        cb[1, 2] += v12, gnd
-    chf = C(ref="C_IN_HF", value="10uF")
+    # Bulk input capacitance: 1000uF + 10uF ceramic per domain.
+    cb = CP(ref=f"C_BULK{d}", value="1000uF/25V")
+    cb[1, 2] += v12, gnd
+    chf = C(ref=f"C_IN_HF{d}", value="10uF")
     chf[1, 2] += v12, gnd
 
     # 12V present indicator, tapped after the guard FET so it also proves the
     # guard is conducting. Common rail: it says nothing about the stagger.
-    d_led = LED(ref="D_LED12", value="GRN")
-    r_led = R(ref="R_LED12", value="4.7k")
-    k = Net("LED12_K")
+    d_led = LED(ref=f"D_LED12{d}", value="GRN")
+    r_led = R(ref=f"R_LED12{d}", value="4.7k")
+    k = Net(f"LED12_K_{d}")
     d_led["A"] += v12
     d_led["K"] += k
     r_led[1, 2] += k, gnd
@@ -216,22 +220,22 @@ def sata_channel(v12, v5_local, gnd, index, c_gate):
 
 
 # ================================================================ top level
-v_in_raw = Net("12V_IN_RAW")
 
 # KiCad's ERC (unlike SKiDL's) needs an explicit PWR_FLAG on any rail that is
 # not fed by a regulator OUTPUT pin. 12V_MAIN comes in from a barrel jack and
 # 5V_MAIN leaves U1 through an inductor, so both look undriven without these.
 PWR_FLAG = Part("power", "PWR_FLAG", dest=TEMPLATE)
-for _flag_net in [gnd, v12_main] + [v5[_n] for _n in range(1, 6)]:
+for _flag_net in [gnd, v12["A"], v12["B"]] + [v5[_n] for _n in range(1, 6)]:
     PWR_FLAG(ref=f"#FLG_{_flag_net.name}")[1] += _flag_net
 
-input_protection(v_in_raw, v12_main, gnd)
+for _d in ("A", "B"):
+    input_protection(Net("12V_IN_RAW_%s" % _d), v12[_d], gnd, _d)
 
 # Stagger table from doc section 4: R fixed, C sets the delay.
 STAGGER = ["1uF", "2.2uF", "4.7uF", "10uF", "22uF"]
 for i, c_val in enumerate(STAGGER, start=1):
-    buck_5v(v12_main, v5[i], gnd, i)
-    sata_channel(v12_main, v5[i], gnd, i, c_val)
+    buck_5v(v12[DOMAIN[i]], v5[i], gnd, i)
+    sata_channel(v12[DOMAIN[i]], v5[i], gnd, i, c_val)
 
 # The 0R rail links, R61..R64 in the drawing. Every one is instantiated; which
 # are actually fitted is gen_sch.LINKS, and it does not change the netlist.

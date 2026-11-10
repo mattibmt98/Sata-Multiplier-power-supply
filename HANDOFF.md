@@ -9,6 +9,11 @@ way, and what is still open.
 
 ## 1. Status
 
+> **Current state is v4 -- read section 12 first.** The board is routed and has
+> two 12V inputs. Sections 1-11 below describe v2 (placed, unrouted, single
+> input) and are kept for the reasoning; where they disagree with section 12 on
+> the input stage, the PCB, or which commands to run, section 12 wins.
+
 The schematic is complete, verified, and fully sourced. The PCB is **placed but
 not routed**.
 
@@ -494,3 +499,104 @@ it is `buck_block(sh, n, dx, dy, fitted)`, drawn into each channel sheet.
 default build you *populate* about 90 of the 112, but the board carries land for
 all of them either way. Five switchers also mean five EMI sources next to five
 drive connectors where there was one.
+
+---
+
+## 12. v4: two 12V inputs (and what v3 changed about the workflow)
+
+### The workflow split that v3 introduced
+
+v3 routed the board by hand in KiCad. Since then the two halves of the project
+are maintained differently:
+
+| | Source of truth | How to change it |
+|---|---|---|
+| Schematic | `gen_sch.py` (still regenerates the live sheets bit-for-bit, UUIDs included) | edit `gen_sch.py` + `sata_psu.py`, run `sata_psu.py`, `gen_sch.py`, `verify.py` |
+| PCB | `kicad/sata_psu.kicad_pcb` itself | KiCad, or a pcbnew script |
+
+**Do not run `gen_pcb.py`.** It emits an unrouted placement over the routed
+board. It currently stops with a placement/netlist mismatch (it has no J9), and
+that failure is the only thing protecting the board -- do not "fix" it.
+`check_pcb.py` belongs to the same era.
+
+Because `sch_lib` derives every UUID from names (`uuid5`), regenerating the
+schematic keeps existing symbols linked to their footprints. DRC with
+`--schematic-parity` is the proof; expect 0 parity issues.
+
+### What changed
+
+A fully populated cage pulls more than one PJ-063AH should carry (8A contact,
+previously fused at 10A), so the single input became two, with the load
+**split** rather than the bricks paralleled:
+
+```
+J8 -> F8 -> Q8 -> 12V_A -> ports 1, 2, 3     ~4.4A worst case
+J9 -> F9 -> Q9 -> 12V_B -> ports 4, 5        ~3.4A worst case
+```
+
+* `12V_MAIN` is gone. `12V_A` and `12V_B` are never joined; ground is common.
+  Paralleled bricks do not share, and an unplugged one would be back-fed
+  through the other's guard FET (its body diode faces the load).
+* `DOMAINS` / `rail12(n)` in `gen_sch.py` assign each port to an input.
+  `input_stage()` is drawn twice from one function, block 8 for A and block 9
+  for B: `J9 F9 Q9 C91 C93 D91 R91` mirror `J8 F8 Q8 C81 C83 D81 R81`.
+* **`C82` no longer exists.** Each domain has one 1000uF (`C81`, `C91`) instead
+  of two shared by five bays.
+* Fuses are **8A**, not 10A: the old value exceeded the jack's contact rating,
+  and each input now carries at most ~4.4A.
+* `check_rails()` rule 4: a 5V link group may not straddle the two domains
+  (i.e. `R63` stays open), or a port would be fed 5V from the other brick's
+  buck while its own 12V is unplugged.
+* Each input has its own 12V LED after its guard FET, so a dark LED says which
+  brick is missing.
+
+### The board
+
+64.9 x 78.8 mm (was 76.0): the top edge moved up 2.8 mm. The input band is two
+identical 32.44 mm halves, A on the left, B on the right, each:
+
+```
+jack (top edge) | fuse, vertical, pad 1 up | Q tab up, leads down
+1000uF under it |                          | 10uF, LED + 4.7k below
+----------- 12V pour strip over the old bus line (y = 51.79) -----------
+```
+
+The 12V bus line and every channel drop below it are untouched; the bus is just
+cut between ports 3 and 4 (x = 59.6 .. 70.3). Silkscreen `A: BAY 1-3` /
+`B: BAY 4-5` marks each half.
+
+DRC against the JLCPCB rules: 0 errors, 0 unconnected, 0 parity issues, 93
+`connection_width` warnings -- 86 inherited from v3 (GND pour necks around
+NPTH pads) plus 7 of the same kind at the second jack.
+
+### pcbnew scripting trap
+
+`pcbnew.SaveBoard()` from a standalone script **rewrites the `.kicad_pro` next
+to the board with default design rules**. DRC then runs against the wrong
+constraints (it reported 236 bogus via errors). Work on a copy, or restore
+`sata_psu.kicad_pro` from git after every scripted save, and confirm with
+`git status` that the project file is unmodified.
+
+### Regenerating outputs
+
+```bash
+K=D:/Kicad/bin/kicad-cli.exe
+$K pcb drc --schematic-parity --severity-all --format report -o kicad/drc.rpt kicad/sata_psu.kicad_pcb
+$K pcb export gerbers --output kicad/gerbers/ \
+   --layers "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts" kicad/sata_psu.kicad_pcb
+$K pcb export drill --output kicad/gerbers/ --format excellon --excellon-separate-th \
+   --excellon-units mm --drill-origin absolute --generate-map --map-format gerberx2 kicad/sata_psu.kicad_pcb
+$K sch export bom --fields 'Reference,Value,Footprint,MPN,DigiKey,${DNP}' \
+   --labels 'Reference,Value,Footprint,MPN,DigiKey,DNP' --group-by 'Value,Footprint,MPN,${DNP}' \
+   --output kicad/bom.csv kicad/sata_psu.kicad_sch
+```
+
+`kicad/sata_psu_jlcpcb.zip` is the contents of `kicad/gerbers/`, flat.
+`kicad/digikey_bom.csv` and `digikey_cart_upload.csv` are hand-maintained.
+
+### Open after v4
+
+* The stagger is now per input: ports 1 and 4 both lead their own sequence.
+* Not bench-tested with one brick absent. By construction nothing crosses the
+  domains except ground and (if someone fits `R63`) 5V.
+* `F2396-ND` for the 8A cartridge came from a web search, not from a cart.
